@@ -28,8 +28,7 @@ app.get('/:chainId/:contractAddress', async (req,res) => {
         } else {
             const evm = new EVM(bytecode);
             const manifest = evmToManifest(evm);
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(manifest));
+            res.json(manifest);
         }
     } catch (err) {
         res.status(400).json({
