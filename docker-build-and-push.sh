@@ -1,5 +1,15 @@
 #!/bin/bash
 
+if [[ -z "$DOCKER_USERNAME" ]]; then
+    echo "DOCKER_USERNAME is missing"
+    exit 1
+fi
+
+if [[ -z "$DOCKER_PASSWORD" ]]; then
+    echo "DOCKER_PASSWORD is missing"
+    exit 1
+fi
+
 version=$(cat package.json \
   | grep version \
   | head -1 \
