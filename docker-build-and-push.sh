@@ -21,6 +21,6 @@ version=$(cat package.json \
 version="$(echo -e "${version}" | sed -e 's/^[[:space:]]*//')"
 echo "Docker image: ampnet/contracts-manifest-service:$version"
 docker build -t ampnet/contracts-manifest-service:$version -t ampnet/contracts-manifest-service:latest .
-docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 docker push ampnet/contracts-manifest-service:$version
 docker push ampnet/contracts-manifest-service:latest
