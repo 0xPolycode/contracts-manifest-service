@@ -1,34 +1,30 @@
-const { EVM } = require('evm');
-const Web3 = require('web3');
+const {EVM} = require('evm');
 const express = require('express');
 const cors = require('cors');
 
-const providers = {
-    "1": new Web3("https://rpc.ankr.com/eth"),
-    "5": new Web3("http://goerli.prylabs.net"),
-    "137": new Web3("https://polygon-rpc.com"),
-    "80001": new Web3("https://rpc-mumbai.maticvigil.com")
-};
+const PORT = process.env.PORT || 42070;
+const app = express();
 
-const PORT = valueOrDefault(process.env.PORT, 42070);
+app.use(cors({origin: '*'}));
+app.use(express.json());
 
-var app = express();
-app.use(cors({
-    origin: '*'
-}));
-app.get('/:chainId/:contractAddress', async (req,res) => {
+app.post('/decompile-contract', async (req, res) => {
     try {
-        const chainId = req.params.chainId;
-        const contractAddress = req.params.contractAddress;
-        const bytecode = await fetchBytecode(contractAddress, chainId);
+        const bytecode = req.body.bytecode;
+
         if (!bytecode || bytecode === "0x") {
             res.status(400).json({
-                error: `Empty code on given address!`
-            });   
+                error: `Empty contract bytecode provided!`
+            });
         } else {
             const evm = new EVM(bytecode);
             const manifest = evmToManifest(evm);
-            res.json(manifest);
+            const artifact = evmToArtifact(evm);
+
+            res.json({
+                manifest: manifest,
+                artifact: artifact
+            });
         }
     } catch (err) {
         res.status(400).json({
@@ -36,64 +32,78 @@ app.get('/:chainId/:contractAddress', async (req,res) => {
         });
     }
 });
-var server = app.listen(PORT, function () {
-    var host = server.address().address;
-    var port = server.address().port;
-    
+
+const server = app.listen(PORT, function () {
+    const host = server.address().address;
+    const port = server.address().port;
+
     console.log("Example app listening at http://%s:%s", host, port);
- })
+});
 
 function evmToManifest(evm) {
     return {
-        id: "imported",
         name: "Imported Contract",
         description: "Imported smart contract.",
-        binary: "",
         tags: [],
         implements: [],
-        constructors: [],
-        functions: evm.getFunctions().map(f => {
+        eventDecorators: [],
+        constructorDecorators: [],
+        functionDecorators: evm.getFunctions().map(f => {
             const name = f.substring(0, f.indexOf("("));
-            const inputs = f.substring(
+            const parameterDecorators = f.substring(
                 f.indexOf("(") + 1,
                 f.indexOf(")")
             ).split(",").filter(v => !!v).map((t, index) => {
-                const paramName = `param${index+1}`;
+                const paramName = `param${index + 1}`;
                 return {
                     name: paramName,
                     description: "",
-                    solidity_name: paramName,
-                    solidity_type: t,
                     recommended_types: [],
                     parameters: null
                 }
             });
             return {
+                signature: f,
                 name: name,
                 description: "",
-                solidity_name: name,
-                inputs: inputs,
-                outputs: [],
-                emittable_events: [],
-                read_only: false
+                parameterDecorators: parameterDecorators,
+                returnDecorators: [],
+                emittableEvents: []
             }
-        }),
-        events: []
+        })
     };
 }
 
-async function fetchBytecode(contractAddress, chainId) {
-    return provider(chainId).eth.getCode(contractAddress);
-}
-
-function provider(chainId) {
-    if (!!providers[`${chainId}`]) { 
-        return providers[chainId]
-    } else {
-        throw "Unsupported blockchain network!"
-    }
-}
-
-function valueOrDefault(value, defaultValue) {
-    return (value !== undefined) ? value : defaultValue
+function evmToArtifact(evm) {
+    return {
+        contractName: "ImportedContract",
+        sourceName: "ImportedContract.sol",
+        bytecode: "",
+        deployedBytecode: "",
+        linkReferences: null,
+        deployedLinkReferences: null,
+        abi: evm.getFunctions().map(f => {
+            const name = f.substring(0, f.indexOf("("));
+            const inputs = f.substring(
+                f.indexOf("(") + 1,
+                f.indexOf(")")
+            ).split(",").filter(v => !!v).map((t, index) => {
+                const paramName = `param${index + 1}`;
+                return {
+                    components: null,
+                    internalType: t,
+                    name: paramName,
+                    type: t,
+                    indexed: null
+                }
+            });
+            return {
+                inputs: inputs,
+                outputs: [],
+                stateMutability: null,
+                name: name,
+                type: "function"
+            }
+        })
+    };
 }

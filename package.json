@@ -1,17 +1,16 @@
 {
-  "name": "contracts-manifest-service",
-  "version": "0.0.2",
-  "description": "Parses smart contract at given address on given blockchain network.",
-  "main": "src/app.js",
-  "scripts": {
-    "start": "node src/app.js" 
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "evm": "^0.2.0",
-    "express": "^4.18.1",
-    "web3": "^1.7.5"
-  }
+    "name": "contracts-manifest-service",
+    "version": "0.1.0",
+    "description": "Parses smart contract at given address on given blockchain network.",
+    "main": "src/app.js",
+    "scripts": {
+        "start": "node src/app.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "cors": "^2.8.5",
+        "evm": "^0.2.0",
+        "express": "^4.18.1"
+    }
 }
