@@ -10,9 +10,6 @@ if [[ -z "$DOCKER_PASSWORD" ]]; then
     exit 1
 fi
 
-echo "$DOCKER_USERNAME"
-echo "$DOCKER_PASSWORD"
-
 version=$(cat package.json \
   | grep version \
   | head -1 \
@@ -22,5 +19,5 @@ version=$(cat package.json \
 version="$(echo -e "${version}" | sed -e 's/^[[:space:]]*//')"
 echo "Docker image: ampnet/contracts-manifest-service:$version"
 docker build -t ampnet/contracts-manifest-service:$version -t ampnet/contracts-manifest-service:latest .
-docker push ampnet/contracts-manifest-service:$version
-docker push ampnet/contracts-manifest-service:latest
+DOCKER_USERNAME="$DOCKER_USERNAME" DOCKER_PASSWORD="$DOCKER_PASSWORD" docker push ampnet/contracts-manifest-service:$version
+DOCKER_USERNAME="$DOCKER_USERNAME" DOCKER_PASSWORD="$DOCKER_PASSWORD" docker push ampnet/contracts-manifest-service:latest
