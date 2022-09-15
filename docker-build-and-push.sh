@@ -10,6 +10,9 @@ if [[ -z "$DOCKER_PASSWORD" ]]; then
     exit 1
 fi
 
+echo "$DOCKER_USERNAME"
+echo "$DOCKER_PASSWORD"
+
 version=$(cat package.json \
   | grep version \
   | head -1 \
