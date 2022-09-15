@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [[ -z "$DOCKER_USERNAME" ]]; then
     echo "DOCKER_USERNAME is missing"
     exit 1
@@ -19,5 +21,6 @@ version=$(cat package.json \
 version="$(echo -e "${version}" | sed -e 's/^[[:space:]]*//')"
 echo "Docker image: ampnet/contracts-manifest-service:$version"
 docker build -t ampnet/contracts-manifest-service:$version -t ampnet/contracts-manifest-service:latest .
-DOCKER_USERNAME="$DOCKER_USERNAME" DOCKER_PASSWORD="$DOCKER_PASSWORD" docker push ampnet/contracts-manifest-service:$version
-DOCKER_USERNAME="$DOCKER_USERNAME" DOCKER_PASSWORD="$DOCKER_PASSWORD" docker push ampnet/contracts-manifest-service:latest
+docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+docker push ampnet/contracts-manifest-service:$version
+docker push ampnet/contracts-manifest-service:latest
