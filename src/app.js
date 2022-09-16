@@ -58,7 +58,7 @@ function evmToManifest(evm) {
                 return {
                     name: paramName,
                     description: "",
-                    recommended_types: [],
+                    recommendedTypes: [],
                     parameters: null
                 }
             });
