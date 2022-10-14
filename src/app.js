@@ -46,32 +46,60 @@ function evmToManifest(evm) {
         description: "Imported smart contract.",
         tags: [],
         implements: [],
-        eventDecorators: [],
+        eventDecorators: createManifestEvents(evm),
         constructorDecorators: [],
-        functionDecorators: evm.getFunctions().map(f => {
-            const name = f.substring(0, f.indexOf("("));
-            const parameterDecorators = f.substring(
-                f.indexOf("(") + 1,
-                f.indexOf(")")
-            ).split(",").filter(v => !!v).map((t, index) => {
-                const paramName = `param${index + 1}`;
-                return {
-                    name: paramName,
-                    description: "",
-                    recommendedTypes: [],
-                    parameters: null
-                }
-            });
-            return {
-                signature: f,
-                name: name,
-                description: "",
-                parameterDecorators: parameterDecorators,
-                returnDecorators: [],
-                emittableEvents: []
-            }
-        })
+        functionDecorators: createManifestFunctions(evm)
     };
+}
+
+function createManifestEvents(evm) {
+    return evm.getEvents().map(e => {
+        const name = e.substring(0, e.indexOf("("));
+        const parameterDecorators = e.substring(
+            e.indexOf("(") + 1,
+            e.indexOf(")")
+        ).split(",").filter(v => !!v).map((t, index) => {
+            const paramName = `param${index + 1}`;
+            return {
+                name: paramName,
+                description: "",
+                recommendedTypes: [],
+                parameters: null
+            }
+        });
+        return {
+            signature: e,
+            name: name,
+            description: "",
+            parameterDecorators: parameterDecorators
+        }
+    });
+}
+
+function createManifestFunctions(evm) {
+    return evm.getFunctions().map(f => {
+        const name = f.substring(0, f.indexOf("("));
+        const parameterDecorators = f.substring(
+            f.indexOf("(") + 1,
+            f.indexOf(")")
+        ).split(",").filter(v => !!v).map((t, index) => {
+            const paramName = `param${index + 1}`;
+            return {
+                name: paramName,
+                description: "",
+                recommendedTypes: [],
+                parameters: null
+            }
+        });
+        return {
+            signature: f,
+            name: name,
+            description: "",
+            parameterDecorators: parameterDecorators,
+            returnDecorators: [],
+            emittableEvents: []
+        }
+    });
 }
 
 function evmToArtifact(evm) {
@@ -82,28 +110,58 @@ function evmToArtifact(evm) {
         deployedBytecode: "",
         linkReferences: null,
         deployedLinkReferences: null,
-        abi: evm.getFunctions().map(f => {
-            const name = f.substring(0, f.indexOf("("));
-            const inputs = f.substring(
-                f.indexOf("(") + 1,
-                f.indexOf(")")
-            ).split(",").filter(v => !!v).map((t, index) => {
-                const paramName = `param${index + 1}`;
-                return {
-                    components: null,
-                    internalType: t,
-                    name: paramName,
-                    type: t,
-                    indexed: null
-                }
-            });
-            return {
-                inputs: inputs,
-                outputs: [],
-                stateMutability: null,
-                name: name,
-                type: "function"
-            }
-        })
+        abi: createArtifactFunctions(evm).concat(createArtifactEvents(evm))
     };
+}
+
+function createArtifactEvents(evm) {
+    return evm.getEvents().map(e => {
+        const name = e.substring(0, e.indexOf("("));
+        const inputs = e.substring(
+            e.indexOf("(") + 1,
+            e.indexOf(")")
+        ).split(",").filter(v => !!v).map((t, index) => {
+            const paramName = `param${index + 1}`;
+            return {
+                components: null,
+                internalType: t,
+                name: paramName,
+                type: t,
+                indexed: null
+            }
+        });
+        return {
+            inputs: inputs,
+            outputs: [],
+            stateMutability: null,
+            name: name,
+            type: "event"
+        }
+    });
+}
+
+function createArtifactFunctions(evm) {
+    return evm.getFunctions().map(f => {
+        const name = f.substring(0, f.indexOf("("));
+        const inputs = f.substring(
+            f.indexOf("(") + 1,
+            f.indexOf(")")
+        ).split(",").filter(v => !!v).map((t, index) => {
+            const paramName = `param${index + 1}`;
+            return {
+                components: null,
+                internalType: t,
+                name: paramName,
+                type: t,
+                indexed: null
+            }
+        });
+        return {
+            inputs: inputs,
+            outputs: [],
+            stateMutability: null,
+            name: name,
+            type: "function"
+        }
+    });
 }
