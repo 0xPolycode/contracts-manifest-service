@@ -97,7 +97,8 @@ function createManifestFunctions(evm) {
             description: "",
             parameterDecorators: parameterDecorators,
             returnDecorators: [],
-            emittableEvents: []
+            emittableEvents: [],
+            readOnly: false
         }
     });
 }
