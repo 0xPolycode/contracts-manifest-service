@@ -1,6 +1,7 @@
-const {EVM} = require('evm');
 const express = require('express');
 const cors = require('cors');
+const { whatsabi } = require('@shazow/whatsabi');
+const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
 
 const PORT = process.env.PORT || 42070;
 const app = express();
@@ -11,16 +12,14 @@ app.use(express.json());
 app.post('/decompile-contract', async (req, res) => {
     try {
         const bytecode = req.body.bytecode;
-
         if (!bytecode || bytecode === "0x") {
             res.status(400).json({
                 error: `Empty contract bytecode provided!`
             });
         } else {
-            const evm = new EVM(bytecode);
-            const manifest = evmToManifest(evm);
-            const artifact = evmToArtifact(evm);
-
+            const parsedBytecode = await parseBytecode(bytecode);
+            const manifest = abiToManifest(parsedBytecode);
+            const artifact = abiToArtifact(parsedBytecode);
             res.json({
                 manifest: manifest,
                 artifact: artifact
@@ -40,20 +39,54 @@ const server = app.listen(PORT, function () {
     console.log("Example app listening at http://%s:%s", host, port);
 });
 
-function evmToManifest(evm) {
+async function parseBytecode(bytecode) {
+    const abi = whatsabi.abiFromBytecode(bytecode);
+    const mapped = await Promise.all(abi.map(async (entry) => {
+        if (entry.type === 'event') {
+            const sig = await signatureLookup.loadEvents(entry.hash);
+            return {
+                signatures: sig,
+                entry
+            }
+        } else if (entry.type === 'function') {
+            const sig = await signatureLookup.loadFunctions(entry.selector);
+            return {
+                signatures: sig,
+                entry
+            }
+        } else {
+            return {
+                signatures: [],
+                entry
+            }
+        }
+    }));
+    const events = mapped.filter(item => {
+        return (item.entry.type === 'event' && item.signatures.length > 0);
+    }).map(item => { return item.signatures[0]; });
+    const functions = mapped.filter(item => {
+        return (item.entry.type === 'function' && item.signatures.length > 0);
+    }).map(item => { return item.signatures[0]; });
+    return {
+        events,
+        functions
+    };
+}
+
+function abiToManifest(parsedBytecode) {
     return {
         name: "Imported Contract",
         description: "Imported smart contract.",
         tags: [],
         implements: [],
-        eventDecorators: createManifestEvents(evm),
+        eventDecorators: createManifestEvents(parsedBytecode),
         constructorDecorators: [],
-        functionDecorators: createManifestFunctions(evm)
+        functionDecorators: createManifestFunctions(parsedBytecode)
     };
 }
 
-function createManifestEvents(evm) {
-    return evm.getEvents().map(e => {
+function createManifestEvents(parsedBytecode) {
+    return parsedBytecode.events.map(e => {
         const name = e.substring(0, e.indexOf("("));
         const parameterDecorators = e.substring(
             e.indexOf("(") + 1,
@@ -76,8 +109,8 @@ function createManifestEvents(evm) {
     });
 }
 
-function createManifestFunctions(evm) {
-    return evm.getFunctions().map(f => {
+function createManifestFunctions(parsedBytecode) {
+    return parsedBytecode.functions.map(f => {
         const name = f.substring(0, f.indexOf("("));
         const parameterDecorators = f.substring(
             f.indexOf("(") + 1,
@@ -102,7 +135,7 @@ function createManifestFunctions(evm) {
     });
 }
 
-function evmToArtifact(evm) {
+function abiToArtifact(parsedBytecode) {
     return {
         contractName: "ImportedContract",
         sourceName: "ImportedContract.sol",
@@ -110,12 +143,12 @@ function evmToArtifact(evm) {
         deployedBytecode: "",
         linkReferences: null,
         deployedLinkReferences: null,
-        abi: createArtifactFunctions(evm).concat(createArtifactEvents(evm))
+        abi: createArtifactFunctions(parsedBytecode).concat(createArtifactEvents(parsedBytecode))
     };
 }
 
-function createArtifactEvents(evm) {
-    return evm.getEvents().map(e => {
+function createArtifactEvents(parsedBytecode) {
+    return parsedBytecode.events.map(e => {
         const name = e.substring(0, e.indexOf("("));
         const inputs = e.substring(
             e.indexOf("(") + 1,
@@ -140,8 +173,8 @@ function createArtifactEvents(evm) {
     });
 }
 
-function createArtifactFunctions(evm) {
-    return evm.getFunctions().map(f => {
+function createArtifactFunctions(parsedBytecode) {
+    return parsedBytecode.functions.map(f => {
         const name = f.substring(0, f.indexOf("("));
         const inputs = f.substring(
             f.indexOf("(") + 1,
