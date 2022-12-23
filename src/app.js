@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { whatsabi } = require('@shazow/whatsabi');
+const {whatsabi} = require('@shazow/whatsabi');
 const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
 
 const PORT = process.env.PORT || 42070;
@@ -24,6 +24,40 @@ app.post('/decompile-contract', async (req, res) => {
                 manifest: manifest,
                 artifact: artifact
             });
+        }
+    } catch (err) {
+        res.status(400).json({
+            error: `${err}`
+        });
+    }
+});
+
+app.get('/function-signature/:signature', async (req, res) => {
+    try {
+        const signature = req.params.signature;
+
+        if (!signature || signature.length !== 10) {
+            res.status(400).json({
+                error: `Invalid function signature provided!`
+            });
+        } else {
+            const resolvedSignatures = await signatureLookup.loadFunctions(signature);
+
+            if (resolvedSignatures.length >= 1) {
+                const abiLikeFunction = {
+                    functions: [resolvedSignatures[0]]
+                };
+                const artifact = createArtifactFunctions(abiLikeFunction);
+
+                res.json({
+                    name: artifact[0].name,
+                    inputs: artifact[0].inputs
+                });
+            } else {
+                res.status(404).json({
+                    error: `Signature not found.`
+                });
+            }
         }
     } catch (err) {
         res.status(400).json({
@@ -63,10 +97,14 @@ async function parseBytecode(bytecode) {
     }));
     const events = mapped.filter(item => {
         return (item.entry.type === 'event' && item.signatures.length > 0);
-    }).map(item => { return item.signatures[0]; });
+    }).map(item => {
+        return item.signatures[0];
+    });
     const functions = mapped.filter(item => {
         return (item.entry.type === 'function' && item.signatures.length > 0);
-    }).map(item => { return item.signatures[0]; });
+    }).map(item => {
+        return item.signatures[0];
+    });
     return {
         events,
         functions
