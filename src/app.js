@@ -73,6 +73,116 @@ const server = app.listen(PORT, function () {
     console.log("Example app listening at http://%s:%s", host, port);
 });
 
+// TODO add typescript source dependency
+function mapToParamDecorator(paramType, index) {
+    const name = `param${index + 1}`;
+    if (typeof (paramType) === "string") {
+        return {
+            name: name,
+            description: "",
+            recommendedTypes: [],
+            parameters: null
+        };
+    } else {
+        return {
+            name: name,
+            description: "",
+            recommendedTypes: [],
+            parameters: paramType.items.map(mapToParamDecorator)
+        };
+    }
+}
+
+function mapToArtifactObject(paramType, index) {
+    const name = `param${index + 1}`;
+    if (typeof (paramType) === "string") {
+        return {
+            name: name,
+            type: paramType,
+            internalType: paramType,
+            components: null,
+            indexed: null
+        };
+    } else {
+        return {
+            name: name,
+            type: "tuple" + paramType.array,
+            internalType: "tuple" + paramType.array,
+            components: paramType.items.map(mapToArtifactObject),
+            indexed: null
+        };
+    }
+}
+
+function extractArray(string) {
+    for (let index = 0; index < string.length; index++) {
+        const char = string[index];
+        if (char != '[' && char != ']') {
+            return string.substring(0, index);
+        }
+    }
+    return "";
+}
+
+function parseParams(paramsString) {
+    const res = {items: [], array: ""};
+    let startIndex = 0;
+    let index = 0;
+    for (; index < paramsString.length; index++) {
+        const char = paramsString[index];
+        if (char === '(') {
+            res.items.push(paramsString.substring(startIndex, index));
+            const innerRes = parseParams(paramsString.substring(index + 1));
+            index += innerRes.len + 1;
+            startIndex = index + 1;
+            res.items.push(innerRes.res);
+        } else if (char === ')') {
+            res.items.push(paramsString.substring(startIndex, index));
+            res.array = extractArray(paramsString.substring(index + 1));
+            return {res, len: index + res.array.length};
+        }
+    }
+    res.items.push(paramsString.substring(startIndex));
+    return {res, len: index};
+}
+
+function cleanParamArray(p) {
+    if (typeof (p) === "string") {
+        return p.split(",").filter(v => !!v);
+    } else {
+        const items = p.items.flatMap(cleanParamArray);
+        return [{
+            items: p.items.flatMap(cleanParamArray),
+            array: p.array,
+            length: items.length
+        }];
+    }
+}
+
+function mapParams(paramsString, isDecorator) {
+    const parseRes = parseParams(paramsString).res;
+    const cleanParams = parseRes.items.flatMap(cleanParamArray).filter(v => v.length > 0);
+    if (isDecorator) {
+        return cleanParams.map(mapToParamDecorator);
+    } else {
+        return cleanParams.map(mapToArtifactObject);
+    }
+}
+
+function parseTypeSignature(signature, isDecorator) {
+    const startIndex = signature.indexOf("(");
+    const endIndex = signature.lastIndexOf(")");
+    const name = signature.substring(0, startIndex);
+    const paramsString = signature.substring(startIndex + 1, endIndex);
+    const items = mapParams(paramsString, isDecorator);
+    return {
+        name,
+        items
+    };
+}
+
+// end TODO add typescript source dependency
+
 async function parseBytecode(bytecode) {
     const abi = whatsabi.abiFromBytecode(bytecode);
     const mapped = await Promise.all(abi.map(async (entry) => {
@@ -125,48 +235,24 @@ function abiToManifest(parsedBytecode) {
 
 function createManifestEvents(parsedBytecode) {
     return parsedBytecode.events.map(e => {
-        const name = e.substring(0, e.indexOf("("));
-        const parameterDecorators = e.substring(
-            e.indexOf("(") + 1,
-            e.indexOf(")")
-        ).split(",").filter(v => !!v).map((t, index) => {
-            const paramName = `param${index + 1}`;
-            return {
-                name: paramName,
-                description: "",
-                recommendedTypes: [],
-                parameters: null
-            }
-        });
+        const parsedSignature = parseTypeSignature(e, true);
         return {
             signature: e,
-            name: name,
+            name: parsedSignature.name,
             description: "",
-            parameterDecorators: parameterDecorators
+            parameterDecorators: parsedSignature.items
         }
     });
 }
 
 function createManifestFunctions(parsedBytecode) {
     return parsedBytecode.functions.map(f => {
-        const name = f.substring(0, f.indexOf("("));
-        const parameterDecorators = f.substring(
-            f.indexOf("(") + 1,
-            f.indexOf(")")
-        ).split(",").filter(v => !!v).map((t, index) => {
-            const paramName = `param${index + 1}`;
-            return {
-                name: paramName,
-                description: "",
-                recommendedTypes: [],
-                parameters: null
-            }
-        });
+        const parsedSignature = parseTypeSignature(f, true);
         return {
             signature: f,
-            name: name,
+            name: parsedSignature.name,
             description: "",
-            parameterDecorators: parameterDecorators,
+            parameterDecorators: parsedSignature.items,
             returnDecorators: [],
             emittableEvents: [],
             readOnly: false
@@ -188,25 +274,12 @@ function abiToArtifact(parsedBytecode) {
 
 function createArtifactEvents(parsedBytecode) {
     return parsedBytecode.events.map(e => {
-        const name = e.substring(0, e.indexOf("("));
-        const inputs = e.substring(
-            e.indexOf("(") + 1,
-            e.indexOf(")")
-        ).split(",").filter(v => !!v).map((t, index) => {
-            const paramName = `param${index + 1}`;
-            return {
-                components: null,
-                internalType: t,
-                name: paramName,
-                type: t,
-                indexed: null
-            }
-        });
+        const parsedSignature = parseTypeSignature(e, false);
         return {
-            inputs: inputs,
+            inputs: parsedSignature.items,
             outputs: [],
             stateMutability: null,
-            name: name,
+            name: parsedSignature.name,
             type: "event"
         }
     });
@@ -214,25 +287,12 @@ function createArtifactEvents(parsedBytecode) {
 
 function createArtifactFunctions(parsedBytecode) {
     return parsedBytecode.functions.map(f => {
-        const name = f.substring(0, f.indexOf("("));
-        const inputs = f.substring(
-            f.indexOf("(") + 1,
-            f.indexOf(")")
-        ).split(",").filter(v => !!v).map((t, index) => {
-            const paramName = `param${index + 1}`;
-            return {
-                components: null,
-                internalType: t,
-                name: paramName,
-                type: t,
-                indexed: null
-            }
-        });
+        const parsedSignature = parseTypeSignature(f, false);
         return {
-            inputs: inputs,
+            inputs: parsedSignature.items,
             outputs: [],
             stateMutability: null,
-            name: name,
+            name: parsedSignature.name,
             type: "function"
         }
     });
