@@ -77,6 +77,10 @@ function mapToArtifactObject(paramType: string | ParseParamsInnerResWithLen, ind
 }
 
 function extractArray(string: string): string {
+  if (/^([\[\]])+$/.test(string)) {
+    return string;
+  }
+
   for (let index = 0; index < string.length; index++) {
     const char = string[index];
 
@@ -88,7 +92,7 @@ function extractArray(string: string): string {
   return ""
 }
 
-function parseParams(paramsString): ParseParamsRes {
+function parseParams(paramsString: string): ParseParamsRes {
   const res: ParseParamsInnerRes = {items: [], array: ""};
   let startIndex = 0;
   let index = 0;
