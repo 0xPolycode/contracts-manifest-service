@@ -80,7 +80,7 @@ function extractArray(string: string): string {
   for (let index = 0; index < string.length; index++) {
     const char = string[index];
 
-    if (char != '[' && char != ']') {
+    if (char !== '[' && char !== ']') {
       return string.substring(0, index);
     }
   }

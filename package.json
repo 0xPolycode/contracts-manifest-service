@@ -1,6 +1,6 @@
 {
     "name": "contracts-manifest-service",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "Parses smart contract at given address on given blockchain network.",
     "main": "src/app.js",
     "scripts": {

@@ -117,7 +117,7 @@ function mapToArtifactObject(paramType, index) {
 function extractArray(string) {
     for (let index = 0; index < string.length; index++) {
         const char = string[index];
-        if (char != '[' && char != ']') {
+        if (char !== '[' && char !== ']') {
             return string.substring(0, index);
         }
     }
@@ -236,8 +236,10 @@ function abiToManifest(parsedBytecode) {
 function createManifestEvents(parsedBytecode) {
     return parsedBytecode.events.map(e => {
         const parsedSignature = parseTypeSignature(e, true);
+        const signatureTypes = e.substring(e.indexOf("(")).replaceAll("(", "tuple(");
+
         return {
-            signature: e,
+            signature: `${parsedSignature.name}${signatureTypes}`,
             name: parsedSignature.name,
             description: "",
             parameterDecorators: parsedSignature.items
@@ -248,8 +250,10 @@ function createManifestEvents(parsedBytecode) {
 function createManifestFunctions(parsedBytecode) {
     return parsedBytecode.functions.map(f => {
         const parsedSignature = parseTypeSignature(f, true);
+        const signatureTypes = f.substring(f.indexOf("(")).replaceAll("(", "tuple(");
+
         return {
-            signature: f,
+            signature: `${parsedSignature.name}${signatureTypes}`,
             name: parsedSignature.name,
             description: "",
             parameterDecorators: parsedSignature.items,
