@@ -12,6 +12,7 @@ app.use(express.json());
 app.post('/decompile-contract', async (req, res) => {
     try {
         const bytecode = req.body.bytecode;
+
         if (!bytecode || bytecode === "0x") {
             res.status(400).json({
                 error: `Empty contract bytecode provided!`
@@ -20,10 +21,15 @@ app.post('/decompile-contract', async (req, res) => {
             const parsedBytecode = await parseBytecode(bytecode);
             const manifest = abiToManifest(parsedBytecode);
             const artifact = abiToArtifact(parsedBytecode);
-            res.json({
+
+            const result = {
                 manifest: manifest,
                 artifact: artifact
-            });
+            };
+
+            console.log(`/decompile-contract response: ${JSON.stringify(result)}`);
+
+            res.json(result);
         }
     } catch (err) {
         res.status(400).json({
@@ -49,10 +55,14 @@ app.get('/function-signature/:signature', async (req, res) => {
                 };
                 const artifact = createArtifactFunctions(abiLikeFunction);
 
-                res.json({
+                const result = {
                     name: artifact[0].name,
                     inputs: artifact[0].inputs
-                });
+                };
+
+                console.log(`/function-signature/${signature} response: ${JSON.stringify(result)}`);
+
+                res.json(result);
             } else {
                 res.status(404).json({
                     error: `Signature not found.`
